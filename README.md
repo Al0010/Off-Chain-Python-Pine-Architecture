@@ -42,13 +42,13 @@ Follow these steps directly from your terminal (macOS, Linux, or Windows) to set
 ### 1. Clone the Repository from GitHub
 Open your terminal and clone the project repository using your GitHub link:
 ```bash
-git clone https://github.com/Al0010/off-chain-py-pine-architecture.git
+git clone https://github.com/Al0010/Off-Chain-Python-Pine-Architecture.git
 ```
 
 ### 2. Navigate into the Project Folder
 Move inside the newly downloaded project directory:
 ```bash
-cd off-chain-py-pine-architecture
+cd Off-Chain-Python-Pine-Architecture
 ```
 
 ### 3. Create a Virtual Environment (`venv`)
@@ -138,7 +138,7 @@ Here is why I personally consider this architecture a right approach to combine 
 ## 📂 Project Structure
 
 ```text
-off-chain-py-pine-architecture/
+Off-Chain-Python-Pine-Architecture/
 │
 ├── data/
 │   └── OANDA_XAUUSD, 15.csv      # Historical dataset (15m timeframe)
