@@ -1,0 +1,80 @@
+//@version=6
+strategy("Off-Chain Python-Pine Architecture [The Quant Science]", 
+     overlay=true, 
+     initial_capital=10000, 
+     default_qty_type=strategy.percent_of_equity, 
+     default_qty_value=80,
+     slippage = 5 
+     )
+
+// Configuration payload string 
+// Format: ATR_Multiplier, Take_Profit_Pct, SMA_Length, ATR_Length
+string config_payload = input.string("", title="Payload", group = "Settings")
+
+// Parser payload
+array<string> tokens = str.split(config_payload, ",")
+
+float atr_mult = array.size(tokens) >= 1 ? float(str.tonumber(array.get(tokens, 0))) : 3.5
+float tp_pct   = array.size(tokens) >= 2 ? float(str.tonumber(array.get(tokens, 1))) : 2.0
+int   sma_len  = array.size(tokens) >= 3 ? int(str.tonumber(array.get(tokens, 2))) : 200
+int   atr_len  = array.size(tokens) >= 4 ? int(str.tonumber(array.get(tokens, 3))) : 14
+
+// Custom SMA
+f_sma(series float src, int len) =>
+    float sum = 0.0
+    int effective_len = math.max(1, len)
+    for i = 0 to effective_len - 1
+        sum += nz(src[i])
+    sum / effective_len
+
+// Custom ATR (True Range based)
+f_atr(int len) =>
+    float tr_val = math.max(high - low, math.max(math.abs(high - close[1]), math.abs(low - close[1])))
+    float atr_sum = 0.0
+    int effective_len = math.max(1, len)
+    for i = 0 to effective_len - 1
+        float cur_tr = math.max(high[i] - low[i], math.max(math.abs(high[i] - nz(close[i+1], high[i])), math.abs(low[i] - nz(close[i+1], low[i]))))
+        atr_sum += cur_tr
+    atr_sum / effective_len
+
+// Indicators
+float sma_val = f_sma(close, sma_len)
+float atr_val = f_atr(atr_len)
+
+// Entry condition
+bool longCondition = ta.crossover(close, sma_val)
+
+var float trail_stop = na
+var float tp_target = na
+
+if strategy.position_size == 0
+    if longCondition
+        strategy.entry("Long", strategy.long)
+        trail_stop := close - (atr_val * atr_mult)
+        tp_target := close * (1.0 + tp_pct / 100.0)
+else
+    // Trailing Stop updating
+    float potential_ts = close - (atr_val * atr_mult)
+    if potential_ts > trail_stop
+        trail_stop := potential_ts
+
+// Exits
+strategy.exit("Exit", "Long", stop=trail_stop, limit=tp_target)
+
+// Design
+var int entry_bar_index = na
+if strategy.position_size > 0 and strategy.position_size[1] == 0
+    entry_bar_index := bar_index
+else if strategy.position_size == 0
+    entry_bar_index := na
+
+int trade_duration = not na(entry_bar_index) ? bar_index - entry_bar_index : 0
+int grad_transp = not na(entry_bar_index) ? math.max(0, 85 - (trade_duration * 3)) : 100
+
+color ts_gradient_color = color.new(color.rgb(255, 0, 0), grad_transp)
+color tp_gradient_color = color.new(color.rgb(0, 255, 8), grad_transp)
+color sma_smart_color = close >= sma_val ? color.rgb(0, 255, 8, 80) : color.rgb(255, 0, 0, 80)
+
+plot(sma_val, title="SMA Smart", color=sma_smart_color, linewidth=1)
+plot(strategy.position_size > 0 ? trail_stop : na, title="Trailing Stop (Gradient)", color=ts_gradient_color, style=plot.style_linebr, linewidth=2)
+plot(strategy.position_size > 0 ? tp_target : na, title="Take Profit (Gradient)", color=tp_gradient_color, style=plot.style_linebr, linewidth=2)
